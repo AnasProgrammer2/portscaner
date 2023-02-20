@@ -30,7 +30,7 @@ def main():
             except:
                 pass
 
-    print(f"Found {open_port_count} hosts with open port 2000")
+    print(f"Found {open_port_count} hosts with open port 80")
     num_requests = len(list(ipaddress.IPv4Network(subnet)))
     elapsed_time = time.time() - start_time
     requests_per_sec = num_requests / elapsed_time
