@@ -4,31 +4,38 @@ import concurrent.futures
 import time
 
 subnet = input("Enter the IP address subnet (in CIDR notation): ")
-open_hosts = []
 
-def check_port(ip):
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.settimeout(1)
-            sock.connect((str(ip), 2000))
-            open_hosts.append(ip)
-            return True
-    except (socket.timeout, ConnectionRefusedError):
-        return False
+def check_port(ip, ports):
+    open_port_count = 0
+    for port in ports:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(1)
+                sock.connect((str(ip), port))
+                open_port_count += 1
+                print(f"Port {port} is open on {ip}")
+        except (socket.timeout, ConnectionRefusedError):
+            pass
+    return open_port_count
 
 def main():
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3000) as executor:
-        futures = [executor.submit(check_port, ip) for ip in ipaddress.IPv4Network(subnet)]
-        for future in concurrent.futures.as_completed(futures):
-            if future.result():
-                print(f"Port 2000 is open on {future.result()}")
+    ports = [80, 443]
+    open_port_count = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2000) as executor:
+        results = {executor.submit(check_port, ip, ports): ip for ip in ipaddress.IPv4Network(subnet)}
+        for future in concurrent.futures.as_completed(results):
+            ip = results[future]
+            try:
+                open_port_count += future.result()
+            except:
+                pass
+
+    print(f"Found {open_port_count} hosts with open port 2000")
+    num_requests = len(list(ipaddress.IPv4Network(subnet)))
+    elapsed_time = time.time() - start_time
+    requests_per_sec = num_requests / elapsed_time
+    print(f"Checked {num_requests} hosts in {elapsed_time:.2f} seconds")
+    print(f"Sent {requests_per_sec:.2f} requests per second")
 
 start_time = time.time()
 main()
-elapsed_time = time.time() - start_time
-num_requests = len(list(ipaddress.IPv4Network(subnet)))
-requests_per_sec = num_requests / elapsed_time
-
-print(f"Checked {num_requests} hosts in {elapsed_time:.2f} seconds")
-print(f"Sent {requests_per_sec:.2f} requests per second")
-print(f"Found {len(open_hosts)} hosts with port 2000 open")
